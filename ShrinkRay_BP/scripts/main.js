@@ -16,24 +16,6 @@ const playerScales = new Map();
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 function round1(n) { return Math.round(n * 10) / 10; }
 
-// --- Jump fix ---
-// minecraft:scale shrinks the collision box so the step-height also shrinks and
-// the player can no longer clear a full block unaided.
-// jump_boost amplifier = ceil(1/scale) - 1 restores the ability to jump blocks.
-// We intentionally do NOT touch the camera or minecraft:movement — both break
-// player controls when modified via script.
-function applyPhysicsFix(player, scale) {
-  player.removeEffect("minecraft:jump_boost");
-
-  if (scale < NORMAL_SCALE) {
-    const amplifier = clamp(Math.ceil(1 / scale) - 1, 0, 10);
-    player.addEffect("minecraft:jump_boost", 20 * 60 * 120, {
-      amplifier,
-      showParticles: false,
-    });
-  }
-}
-
 // --- Core: apply a scale to a player ---
 function applyScale(player, scale) {
   const scaleComp = player.getComponent("minecraft:scale");
@@ -43,7 +25,6 @@ function applyScale(player, scale) {
   }
   scaleComp.value = scale;
   playerScales.set(player.name, scale);
-  applyPhysicsFix(player, scale);
 }
 
 // --- Full reset ---
