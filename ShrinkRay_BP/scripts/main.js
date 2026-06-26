@@ -8,7 +8,6 @@ const NORMAL_SCALE    = 1.0;
 const STEP            = 0.2;
 
 const PLAYER_EYE_HEIGHT  = 1.62;
-const BASE_MOVE_SPEED    = 0.1;
 const BASE_CAMERA_RADIUS = 3;
 
 // Scoreboard objective used by reset.mcfunction to signal a full reset.
@@ -37,15 +36,16 @@ function applyCameraFix(player, scale) {
   });
 }
 
-// --- Movement / jump fix ---
+// --- Jump fix ---
+// minecraft:scale shrinks the collision box, so the step-height also shrinks
+// and the player can no longer clear a 1-block step unaided.
+// We compensate with jump_boost: amplifier = ceil(1/scale) - 1.
+// Movement speed is intentionally left at the vanilla default — touching
+// minecraft:movement via script breaks jump entirely for players.
 function applyPhysicsFix(player, scale) {
-  const moveComp = player.getComponent("minecraft:movement");
-  if (moveComp) moveComp.value = BASE_MOVE_SPEED * scale;
-
   player.removeEffect("minecraft:jump_boost");
 
   if (scale < NORMAL_SCALE) {
-    // amplifier = ceil(1/scale) - 1 ensures the player can clear a 1-block step
     const amplifier = clamp(Math.ceil(1 / scale) - 1, 0, 10);
     player.addEffect("minecraft:jump_boost", 20 * 60 * 120, {
       amplifier,

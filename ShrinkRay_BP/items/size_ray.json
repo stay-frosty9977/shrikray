@@ -3,7 +3,9 @@
   "minecraft:item": {
     "description": {
       "identifier": "shrink_ray:size_ray",
-      "category": "Equipment"
+      "menu_category": {
+        "category": "equipment"
+      }
     },
     "components": {
       "minecraft:max_stack_size": 1,
