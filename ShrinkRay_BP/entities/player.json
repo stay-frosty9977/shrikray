@@ -10,9 +10,6 @@
     "components": {
       "minecraft:scale": {
         "value": 1.0
-      },
-      "minecraft:step_height": {
-        "value": 0.5625
       }
     }
   }
