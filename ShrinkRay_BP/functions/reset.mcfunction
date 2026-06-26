@@ -1,6 +1,5 @@
 # shrink_ray:reset
 # Usage: /function shrink_ray:reset
-# Clears jump_boost and resets camera for the executing player.
-# Re-equip and use the Size Ray at normal size to fully sync the script state.
-effect @s minecraft:jump_boost 1 0 true
-camera @s clear
+# Sets a flag on the executing player that the script polls every tick.
+# The script then resets scale, camera, movement speed, and jump boost.
+scoreboard players set @s shrink_ray_reset 1

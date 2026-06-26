@@ -7,12 +7,13 @@ const MAX_SCALE       = 3.0;
 const NORMAL_SCALE    = 1.0;
 const STEP            = 0.2;
 
-// Player eye height at scale 1.0 (Bedrock default)
-const PLAYER_EYE_HEIGHT    = 1.62;
-// Default walk speed at scale 1.0
-const BASE_MOVE_SPEED      = 0.1;
-// Camera follow distance at scale 1.0 (only used in follow_orbit mode)
-const BASE_CAMERA_RADIUS   = 3;
+const PLAYER_EYE_HEIGHT  = 1.62;
+const BASE_MOVE_SPEED    = 0.1;
+const BASE_CAMERA_RADIUS = 3;
+
+// Scoreboard objective used by reset.mcfunction to signal a full reset.
+// The function sets the player's score to 1; the script polls and acts on it.
+const RESET_OBJECTIVE = "shrink_ray_reset";
 
 const playerScales = new Map();
 
@@ -27,68 +28,91 @@ function round1(n) { return Math.round(n * 10) / 10; }
 // actual (scaled) eye level.
 function applyCameraFix(player, scale) {
   if (scale === NORMAL_SCALE) {
-    // Return to default camera when back to normal size
     player.camera.clear();
     return;
   }
-
-  const eyeOffset = PLAYER_EYE_HEIGHT * scale;
-
   player.camera.setCamera("minecraft:follow_orbit", {
-    entityOffset: { x: 0, y: eyeOffset, z: 0 },
+    entityOffset: { x: 0, y: PLAYER_EYE_HEIGHT * scale, z: 0 },
     radius: BASE_CAMERA_RADIUS * Math.max(scale, 0.4),
   });
 }
 
 // --- Movement / jump fix ---
-// When scaled down the collision box shrinks too, so the default step-height
-// becomes a fraction of a block and the player can no longer climb normal
-// blocks.  We compensate by:
-//   • adjusting walk speed proportionally (tiny players walk slowly; giants fast)
-//   • applying jump_boost when small so 1-block heights remain jumpable
-//   • clearing the effect when back to normal / large
 function applyPhysicsFix(player, scale) {
-  // Adjust walk speed
   const moveComp = player.getComponent("minecraft:movement");
-  if (moveComp) {
-    moveComp.value = BASE_MOVE_SPEED * scale;
-  }
+  if (moveComp) moveComp.value = BASE_MOVE_SPEED * scale;
 
-  // Remove any previous compensating effects first
   player.removeEffect("minecraft:jump_boost");
 
   if (scale < NORMAL_SCALE) {
-    // At scale s the player's physical height is ~1.8*s blocks.
-    // To jump a 1-block step the player needs proportionally more air-time.
-    // jump_boost amplifier n adds n extra blocks to jump height.
-    // We want to be able to clear a 1-block step from scale 0.2 upward.
-    // Formula: amplifier = ceil(1/scale) - 1  (clamped to reasonable range)
+    // amplifier = ceil(1/scale) - 1 ensures the player can clear a 1-block step
     const amplifier = clamp(Math.ceil(1 / scale) - 1, 0, 10);
-    // Apply for a very long duration (refreshed on every scale change)
     player.addEffect("minecraft:jump_boost", 20 * 60 * 120, {
       amplifier,
       showParticles: false,
     });
   }
-  // No special effect needed when at or above NORMAL_SCALE; vanilla jump
-  // height is fine and the player's larger model already benefits from
-  // the larger hitbox.
 }
 
-// --- Core: apply a new scale ---
+// --- Core: apply a scale to a player ---
 function applyScale(player, scale) {
   const scaleComp = player.getComponent("minecraft:scale");
   if (!scaleComp) {
     player.sendMessage("§cError: scale component not found.");
     return;
   }
-
   scaleComp.value = scale;
   playerScales.set(player.name, scale);
-
   applyCameraFix(player, scale);
   applyPhysicsFix(player, scale);
 }
+
+// --- Full reset (scale + camera + effects + internal state) ---
+function resetPlayer(player) {
+  applyScale(player, NORMAL_SCALE);
+  playerScales.delete(player.name);
+  player.sendMessage("§aSize reset to normal.");
+}
+
+// --- Scoreboard reset signal setup ---
+// Creates the objective if it doesn't already exist so reset.mcfunction can
+// use it immediately after the pack is first loaded.
+function ensureResetObjective() {
+  try {
+    world.scoreboard.addObjective(RESET_OBJECTIVE, "dummy");
+  } catch {
+    // Objective already exists — that's fine.
+  }
+}
+
+// Poll every tick for any player whose reset score was set to 1 by the
+// mcfunction, then clear the score and perform a full reset.
+function startResetPoller() {
+  system.runInterval(() => {
+    const objective = world.scoreboard.getObjective(RESET_OBJECTIVE);
+    if (!objective) return;
+
+    for (const player of world.getAllPlayers()) {
+      let score;
+      try {
+        score = objective.getScore(player.scoreboardIdentity);
+      } catch {
+        continue;
+      }
+      if (score === 1) {
+        // Clear flag first so we don't loop
+        objective.setScore(player.scoreboardIdentity, 0);
+        resetPlayer(player);
+      }
+    }
+  }, 1);
+}
+
+// --- Initialise scoreboard and poller once the world is ready ---
+system.run(() => {
+  ensureResetObjective();
+  startResetPoller();
+});
 
 // --- Right-click handler ---
 world.beforeEvents.itemUse.subscribe((event) => {
@@ -120,7 +144,7 @@ function buildBar(scale) {
   return "§a" + "█".repeat(filled) + "§8" + "█".repeat(total - filled);
 }
 
-// --- Restore on respawn ---
+// --- Restore scale on respawn ---
 world.afterEvents.playerSpawn.subscribe(({ player, initialSpawn }) => {
   if (!initialSpawn) {
     const saved = playerScales.get(player.name);
