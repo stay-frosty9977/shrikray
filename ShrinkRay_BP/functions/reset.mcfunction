@@ -1,5 +1,5 @@
 # shrink_ray:reset
 # Usage: /function shrink_ray:reset
-# Sets a flag on the executing player that the script polls every tick.
-# The script then resets scale, camera, movement speed, and jump boost.
+# Sets a flag that the script picks up on the next tick to fully reset
+# scale, jump_boost, and the internal size state for the executing player.
 scoreboard players set @s shrink_ray_reset 1

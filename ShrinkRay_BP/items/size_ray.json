@@ -15,7 +15,9 @@
         "value": "Size Ray"
       },
       "minecraft:icon": {
-        "texture": "size_ray"
+        "textures": {
+          "default": "size_ray"
+        }
       },
       "minecraft:tooltip": {
         "content": "§7Right-click: §6Grow  §7| Sneak + Right-click: §bShrink"
