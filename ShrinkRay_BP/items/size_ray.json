@@ -1,0 +1,23 @@
+{
+  "format_version": "1.21.0",
+  "minecraft:item": {
+    "description": {
+      "identifier": "shrink_ray:size_ray",
+      "category": "Equipment"
+    },
+    "components": {
+      "minecraft:max_stack_size": 1,
+      "minecraft:use_duration": 32,
+      "minecraft:hand_equipped": true,
+      "minecraft:display_name": {
+        "value": "Size Ray"
+      },
+      "minecraft:icon": {
+        "texture": "size_ray"
+      },
+      "minecraft:tooltip": {
+        "content": "§7Right-click: §6Grow  §7| Sneak + Right-click: §bShrink"
+      }
+    }
+  }
+}
